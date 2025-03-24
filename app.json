@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "crop-disease-detection",
+    "name": "Crop AI",
     "slug": "crop-disease-detection",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,10 +8,23 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "extra": {
+      "GEMINI_API_KEY": "AIzaSyAlMN6f0OVGV29E2BDuTAajI8uAicq9gWk",
+      "web_client_id": "129087000878-9o49a9d8t21ml0fd3qrbvc79a1j8185i.apps.googleusercontent.com",
+      "android_client_id": "129087000878-7cvqdfj91hoc593cqo2pdq2e6hamrjcg.apps.googleusercontent.com",
+      "ios_client_id": "129087000878-7cvqdfj91hoc593cqo2pdq2e6hamrjcg.apps.googleusercontent.com",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "95683e1c-4059-4070-b71d-f8bbfe452f33"
+      }
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.sjtest5554.cropdiseasedetection",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -36,6 +49,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/95683e1c-4059-4070-b71d-f8bbfe452f33"
     }
   }
 }
