@@ -80,6 +80,7 @@ const CustomDrawerContent = (props: any) => {
                             {route.name === "crop-diagnose" && "Crop Diagnosis"}
                             {route.name === "chatbot" && "Chatbot"}
 							{route.name === "oauth" && "oauth"}
+							{route.name === "crops-list" && "Crops List"}
 							{route.name === "profile" && "Profile"}
                             
 
@@ -205,6 +206,13 @@ export default function Layout() {
 					options={{
 						drawerLabel: 'Oauth',
 						title: 'oauth',
+					}}
+				/>
+				<Drawer.Screen
+					name="crops-list"
+					options={{
+						drawerLabel: 'List of Crops',
+						title: 'Crops List',
 					}}
 				/>
 				<Drawer.Screen

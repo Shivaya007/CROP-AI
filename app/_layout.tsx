@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { auth } from "./firebase";
 
 export default function RootLayout() {
+
+	
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
 			if (user) {

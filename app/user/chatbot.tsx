@@ -14,105 +14,161 @@ import {
   Dimensions,
   Animated,
 } from "react-native";
-import Markdown from "react-native-markdown-display"; // ✅ Import Markdown
+import Markdown from "react-native-markdown-display";
 import { useLocalSearchParams } from "expo-router";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Constants from "expo-constants";
-import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons"; // Import icons
 import Header from "@/components/header";
-
+import Constants from "expo-constants";
+import {
+  collection,
+  addDoc,
+  doc,
+  getDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "../firebase";
+import useUserId from "../userid";
 
 const GEMINI_API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
 const { width } = Dimensions.get("window");
 
 export default function ChatbotScreen() {
-  const { imageUri, aiResponse } = useLocalSearchParams();
-  const [messages, setMessages] = useState([
-    {
-      role: "model",
-      parts: [
-        {
-          text:
-            "**AI Analysis:** \n\n " +
-            (aiResponse
-              ? JSON.parse(aiResponse).candidates[0]?.content?.parts[0]?.text
-              : "No analysis available."),
-        },
-      ],
-    },
-  ]);
+  const { docId } = useLocalSearchParams();
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [savedImageUri, setSavedImageUri] = useState(null);
-  const scrollViewRef = useRef();
+  const [imageUrl, setImageUrl] = useState(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scrollViewRef = useRef();
+  const userId = useUserId();
   const navigation = useNavigation();
+  
 
   useEffect(() => {
-    const retrieveSavedImage = async () => {
+    if (!docId || !userId) return;
+
+    const fetchImageUrl = async () => {
       try {
-        const uri = await AsyncStorage.getItem("savedImageUri");
-        if (uri) {
-          setSavedImageUri(uri);
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }).start();
+        const docRef = doc(db, "users", userId, "crop-diagnosis", docId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.imageUrl) {
+            setImageUrl(data.imageUrl);
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 800,
+              useNativeDriver: true,
+            }).start();
+          }
+        } else {
+          console.error("Document not found!");
         }
       } catch (error) {
-        console.error("Error retrieving saved image URI:", error);
+        console.error("Error fetching image URL from Firestore:", error);
       }
     };
-    retrieveSavedImage();
-  }, []);
+
+    fetchImageUrl();
+  }, [docId, userId]);
 
   useEffect(() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+    if (!docId || !userId) return;
+
+    const messagesRef = collection(
+      db,
+      "users",
+      userId,
+      "crop-diagnosis",
+      docId,
+      "messages"
+    );
+
+    const q = query(messagesRef, orderBy("timestamp"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedMessages = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setMessages(fetchedMessages);
+    });
+
+    return () => unsubscribe();
+  }, [docId, userId]);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !docId || !userId) return;
 
-    const newUserMessage = { role: "user", parts: [{ text: input }] };
-    setMessages((prev) => [...prev, newUserMessage]);
-    setLoading(true);
+    const newUserMessage = {
+      role: "user",
+      parts: [{ text: input.trim() }],
+      timestamp: serverTimestamp(),
+    };
+
     setInput("");
+    setLoading(true);
 
     try {
+      const messagesRef = collection(
+        db,
+        "users",
+        userId,
+        "crop-diagnosis",
+        docId,
+        "messages"
+      );
+
+      await addDoc(messagesRef, newUserMessage);
+
+      const formattedMessages = messages.map((msg) => ({
+        role: msg.role,
+        parts: msg.parts,
+      }));
+
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
-          contents: [...messages, newUserMessage],
+          contents: [...formattedMessages, { role: "user", parts: [{ text: input.trim() }] }],
         }
       );
-      const aiReply =
-        response.data.candidates[0]?.content?.parts[0]?.text ||
-        "No response from AI.";
-      setMessages((prev) => [...prev, { role: "model", parts: [{ text: aiReply }] }]);
+
+      const aiReplyText =
+        response.data.candidates[0]?.content?.parts[0]?.text || "No response from AI.";
+
+      const aiReply = {
+        role: "model",
+        parts: [{ text: aiReplyText }],
+        timestamp: serverTimestamp(),
+      };
+
+      await addDoc(messagesRef, aiReply);
     } catch (error) {
-      console.error("Error fetching AI response:", error);
-      setMessages((prev) => [...prev, { role: "model", parts: [{ text: "**AI:** Sorry, something went wrong." }] }]);
+      console.error("Error sending message:", error);
     }
 
     setLoading(false);
   };
 
-  const formatTimestamp = () => {
-    const now = new Date();
-    return now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
+  if (!docId) { 
+    return (
+      <View style={styles.container}>
+        <Header title="ChatBot" />
+        <Text style={{ textAlign: "center", marginTop: 20, fontSize:18}}>
+          No Image Uploaded for Analysis
+        </Text>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      {/* <LinearGradient colors={["#1a237e", "#283593", "#3949ab"]} style={styles.header}>
-        <Text style={styles.headerTitle}>Crop Assistant</Text>
-      </LinearGradient> */}
       <Header title="ChatBot" />
 
       <ScrollView
@@ -121,10 +177,10 @@ export default function ChatbotScreen() {
         contentContainerStyle={styles.chatBoxContent}
         keyboardShouldPersistTaps="handled"
       >
-        {savedImageUri && (
+        {imageUrl && (
           <Animated.View style={[styles.imageContainer, { opacity: fadeAnim }]}>
             <View style={styles.imageWrapper}>
-              <Image source={{ uri: savedImageUri }} style={styles.image} />
+              <Image source={{ uri: imageUrl }} style={styles.image} />
               <View style={styles.imageBadge}>
                 <Text style={styles.imageBadgeText}>ANALYSIS</Text>
               </View>
@@ -132,7 +188,7 @@ export default function ChatbotScreen() {
           </Animated.View>
         )}
 
-        {messages.map((msg, i) => (
+{messages.map((msg, i) => (
           <View key={i} style={[styles.messageContainer, msg.role === "model" ? styles.aiMessage : styles.userMessage]}>
             <View
               style={[
@@ -152,28 +208,29 @@ export default function ChatbotScreen() {
             )}
           </View>
         ))}
+
       </ScrollView>
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <BlurView intensity={80} tint="light" style={styles.inputWrapper}>
           <View style={styles.inputContainer}>
             <TextInput
-              style={[styles.input, { minHeight: 50, maxHeight: 150 }]} // Adjust height dynamically
+              style={styles.input}
               value={input}
               onChangeText={setInput}
               placeholder="Ask about your crop..."
-              placeholderTextColor="#9e9e9e"
-              multiline={true} // Enables multiline input
-              numberOfLines={4} // Sets initial number of lines
-              textAlignVertical="top" // Aligns text to the top
-              onFocus={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+              multiline
             />
             <TouchableOpacity
               style={[styles.sendButton, !input.trim() && styles.sendButtonDisabled]}
               onPress={sendMessage}
               disabled={loading || !input.trim()}
             >
-              {loading ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.sendButtonText}>Send</Text>}
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={styles.sendButtonText}>Send</Text>
+              )}
             </TouchableOpacity>
           </View>
         </BlurView>
@@ -181,6 +238,7 @@ export default function ChatbotScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   // Existing styles...
@@ -208,8 +266,6 @@ const styles = StyleSheet.create({
     zIndex: 10, // Ensure it's above other elements
     marginTop:-10,
   },
-  
-
   
   container: { 
     flex: 1, 
