@@ -22,6 +22,9 @@ import { collection, addDoc } from "firebase/firestore";
 import { db, storage } from "../firebase";
 import useUserId from "../userid";
 import { TextInput } from "react-native-gesture-handler";
+import { ToastAndroid, Platform, Alert } from "react-native";
+
+
 
 const GEMINI_API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
 
@@ -37,6 +40,8 @@ export default function HomeScreen() {
   const [titleModalVisible, setTitleModalVisible] = useState(false);
   const [imageResult, setImageResult] = useState(null);
   const [pendingDocId, setPendingDocId] = useState<string | null>(null);
+  const [retryUpload, setRetryUpload] = useState(false);
+
 
   useEffect(() => {
     if (openModal) {
@@ -44,9 +49,19 @@ export default function HomeScreen() {
     }
   }, [openModal]);
 
+  const showError = (message: string) => {
+    if (Platform.OS === "android") {
+      ToastAndroid.show(message, ToastAndroid.LONG);
+    } else {
+      Alert.alert("Error", message);
+    }
+  };
+  
+
 
   const uploadToGemini = async (imageUri: string) => {
     setLoading(true);
+    setRetryUpload(false);
     try {
       const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: "base64" });
 
@@ -62,7 +77,8 @@ export default function HomeScreen() {
                     data: base64,
                   },
                 },
-                { text: "Analyze this crop and provide the name, diseases, and possible treatments, provide a short report of 50 words only in points." },
+                //{ text: "Analyze this crop and provide the name, diseases, and possible treatments, provide a short report of 50 words only in points." },
+                { text: "Analyze this crop give it's name, diseases, and possible treatments, and generate a list of to-do's in order to solve the diseases, give a day by day plan in short only, Each point in max 20 words, in respone give only list of to-do's no other text." },
               ],
             },
           ],
@@ -86,7 +102,9 @@ export default function HomeScreen() {
       router.push({ pathname: "/user/chatbot", params: { docId } });
     } catch (error) {
       console.error("Error uploading image:", error);
+      showError("Failed to analyze the image. Please try again.");
       setLoading(false);
+      setRetryUpload(true); 
     }
   };
 
@@ -119,6 +137,8 @@ export default function HomeScreen() {
       return docRef.id; // Return the document ID
     } catch (error) {
       console.error("Error uploading to Firebase:", error);
+      showError("Failed to save data. Check your connection and try again.");
+      setRetryUpload(true); 
       return null;
     }
   };
@@ -174,6 +194,15 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
+    {retryUpload && (
+      <TouchableOpacity style={styles.retryButton} onPress={() => {
+        setRetryUpload(false);
+        uploadToGemini(imageResult);
+      }}>
+        <Text style={styles.retryText}>Retry Upload</Text>
+      </TouchableOpacity>
+    )}
+
       <Modal
         visible={modalVisible}
         transparent
@@ -219,22 +248,81 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  input: { width: "100%", padding: 10, borderWidth: 1, borderColor: "#ddd", borderRadius: 5, marginBottom: 15 },
-  container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F5F7FA", padding: 20 },
-  image: { width: 200, height: 200, borderRadius: 10, marginBottom: 20 },
-  button: { flexDirection: "row", backgroundColor: "#4CAF50", paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, alignItems: "center", gap: 10, elevation: 3 },
-  buttonText: { fontSize: 18, fontWeight: "bold", color: "white" },
-  modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" },
-  modalContent: { width: "80%", backgroundColor: "white", borderRadius: 10, padding: 20, alignItems: "center" },
-  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
-  optionButton: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 20, width: "100%", justifyContent: "flex-start", borderBottomWidth: 1, borderBottomColor: "#ddd" },
-  optionText: { fontSize: 18, marginLeft: 10 },
-  cancelButton: { marginTop: 10, paddingVertical: 10, width: "100%", alignItems: "center" },
-  cancelText: { fontSize: 18, fontWeight: "bold", color: "#FF3B30" },
+    input: {
+      width: "100%",
+      padding: 12,
+      borderWidth: 1,
+      borderColor: "#0D47A1",
+      borderRadius: 8,
+      backgroundColor: "#F1F5F9",
+      fontSize: 16,
+      marginBottom: 15,
+    },
+    container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F5F7FA", padding: 20 },
+    image: {
+      width: 220,
+      height: 220,
+      borderRadius: 12,
+      marginBottom: 20,
+      elevation: 6,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 5,
+    },
+    button: {
+      flexDirection: "row",
+      backgroundColor: "#0D47A1", // Changed to blue for a more professional look
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      borderRadius: 30,
+      alignItems: "center",
+      gap: 10,
+      elevation: 5,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+    },
+    buttonText: { fontSize: 18, fontWeight: "bold", color: "white" },
+    modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" },
+    modalContent: {
+    width: "85%",
+    backgroundColor: "white",
+    borderRadius: 15,
+    padding: 25,
+    alignItems: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+    modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
+    optionButton: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 20, width: "100%", justifyContent: "flex-start", borderBottomWidth: 1, borderBottomColor: "#ddd" },
+    optionText: { fontSize: 18, marginLeft: 10 },
+    cancelButton: { marginTop: 10, paddingVertical: 10, width: "100%", alignItems: "center" },
+    cancelText: { fontSize: 18, fontWeight: "bold", color: "#FF3B30" },
+    retryButton: {
+      backgroundColor: "#FF3B30",
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 30,
+      marginTop: 15,
+      alignItems: "center",
+      elevation: 3,
+    },
+    retryText: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: "white",
+    },
+    
 });
 

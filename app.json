@@ -9,10 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "extra": {
-      "GEMINI_API_KEY": "AIzaSyAlMN6f0OVGV29E2BDuTAajI8uAicq9gWk",
+      "GEMINI_API_KEY": "AIzaSyDOS_NvkSys31-7LWyaeOFncwDvjx7NbOk",
       "web_client_id": "129087000878-9o49a9d8t21ml0fd3qrbvc79a1j8185i.apps.googleusercontent.com",
       "android_client_id": "129087000878-7cvqdfj91hoc593cqo2pdq2e6hamrjcg.apps.googleusercontent.com",
       "ios_client_id": "129087000878-7cvqdfj91hoc593cqo2pdq2e6hamrjcg.apps.googleusercontent.com",
+      "news_api_key" : "9a180595ebed44ca9aaf845c8dd34414",
       "router": {
         "origin": false
       },

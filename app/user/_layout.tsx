@@ -81,6 +81,7 @@ const CustomDrawerContent = (props: any) => {
                             {route.name === "chatbot" && "Chatbot"}
 							{route.name === "oauth" && "oauth"}
 							{route.name === "crops-list" && "Crops List"}
+							{route.name === "news" && "News"}
 							{route.name === "profile" && "Profile"}
                             
 
@@ -144,14 +145,15 @@ const CustomDrawerContent = (props: any) => {
 					textAlign: "center",
 					color: "#7e7e7e",
 					marginTop: 5,
+					lineHeight:22
 					}}>
-					Designed and Developed by Shivam
+					Designed and Developed by{"\n"} Tech Explorers
 				</Text>
 			</View>
 		</DrawerContentScrollView>
 	);
 };
-  
+
 
 export default function Layout() {
 	useEffect(() => {
@@ -213,6 +215,13 @@ export default function Layout() {
 					options={{
 						drawerLabel: 'List of Crops',
 						title: 'Crops List',
+					}}
+				/>
+				<Drawer.Screen
+					name="news"
+					options={{
+						drawerLabel: 'News',
+						title: 'News',
 					}}
 				/>
 				<Drawer.Screen
