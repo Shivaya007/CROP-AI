@@ -1,10 +1,9 @@
-import { router, Stack } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect } from "react";
 import { auth } from "./firebase";
 
 export default function RootLayout() {
-
 	
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (user) => {

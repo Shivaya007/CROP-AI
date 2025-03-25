@@ -145,7 +145,7 @@ const CustomDrawerContent = (props: any) => {
 					color: "#7e7e7e",
 					marginTop: 5,
 					}}>
-					Designed and Developed by SSSS
+					Designed and Developed by Shivam
 				</Text>
 			</View>
 		</DrawerContentScrollView>

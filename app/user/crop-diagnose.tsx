@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Image,
@@ -21,22 +21,29 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { db, storage } from "../firebase";
 import useUserId from "../userid";
+import { TextInput } from "react-native-gesture-handler";
 
 const GEMINI_API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
 
 export default function HomeScreen() {
+  const inputRef = useRef(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { openModal } = useLocalSearchParams();
   const userId = useUserId();
+  const [cropTitle, setCropTitle] = useState("");
+  const [titleModalVisible, setTitleModalVisible] = useState(false);
+  const [imageResult, setImageResult] = useState(null);
+  const [pendingDocId, setPendingDocId] = useState<string | null>(null);
 
   useEffect(() => {
     if (openModal) {
       setModalVisible(true);
     }
   }, [openModal]);
+
 
   const uploadToGemini = async (imageUri: string) => {
     setLoading(true);
@@ -69,12 +76,20 @@ export default function HomeScreen() {
       const docId = await uploadImageAndSaveData(imageUri, aiResponse);
       
       setLoading(false);
+      setCropTitle("");
+      setImageUri(null);
+      setPendingDocId(docId);
+      setTitleModalVisible(false);
+      setModalVisible(false);
+
+      
       router.push({ pathname: "/user/chatbot", params: { docId } });
     } catch (error) {
       console.error("Error uploading image:", error);
       setLoading(false);
     }
   };
+
 
   const uploadImageAndSaveData = async (imageUri: string, aiResponse: any) => {
     try {
@@ -89,6 +104,7 @@ export default function HomeScreen() {
         imageUrl: downloadURL,
         aiResponse: aiResponse,
         timestamp: new Date(),
+        name : cropTitle,
       });
 
 
@@ -125,12 +141,29 @@ export default function HomeScreen() {
 
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
-      uploadToGemini(result.assets[0].uri);
+      setImageResult(result.assets[0].uri);
+      setTitleModalVisible(true);
     }
   };
 
+  const handleTitleSubmit = async () => {
+   if (!cropTitle) return;
+    setTitleModalVisible(false);
+    uploadToGemini(imageResult);
+  };
+
+
+  useEffect(() => {
+    if (titleModalVisible && inputRef.current) {
+      setTimeout(() => inputRef.current.focus(), 100); // Small delay to ensure modal animation completes
+    }
+  }, [titleModalVisible]);
+
   return (
     <View style={styles.container}>
+
+      {cropTitle && !titleModalVisible && <Text style={{fontSize:20, fontStyle:"italic", marginBottom:18}}>{cropTitle}</Text>}
+      
       {imageUri && <Image source={{ uri: imageUri }} style={styles.image} />}
       {loading ? (
         <ActivityIndicator size="large" color="#4CAF50" />
@@ -167,11 +200,31 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={titleModalVisible} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Enter Crop Title</Text>
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              placeholder="Enter Crop Name"
+              value={cropTitle}
+              onChangeText={setCropTitle}
+            />
+            <TouchableOpacity style={styles.button} onPress={handleTitleSubmit}>
+              <Text style={styles.buttonText}>Submit</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  input: { width: "100%", padding: 10, borderWidth: 1, borderColor: "#ddd", borderRadius: 5, marginBottom: 15 },
   container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F5F7FA", padding: 20 },
   image: { width: 200, height: 200, borderRadius: 10, marginBottom: 20 },
   button: { flexDirection: "row", backgroundColor: "#4CAF50", paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, alignItems: "center", gap: 10, elevation: 3 },

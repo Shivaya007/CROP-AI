@@ -15,10 +15,9 @@ import {
   Animated,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import axios from "axios";
 import { BlurView } from "expo-blur";
-import { useNavigation } from "@react-navigation/native";
 import Header from "@/components/header";
 import Constants from "expo-constants";
 import {
@@ -33,6 +32,9 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import useUserId from "../userid";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+
 
 const GEMINI_API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
 const { width } = Dimensions.get("window");
@@ -46,8 +48,32 @@ export default function ChatbotScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef();
   const userId = useUserId();
-  const navigation = useNavigation();
+  const [cropName, setCropName] = useState("");
+  const router = useRouter();
+
+
+  useEffect(() => {
+    const storeDocId = async () => {
+      if (docId) {
+        await AsyncStorage.setItem("lastDocId", docId);
+      }
+    };
+    storeDocId();
+  }, [docId]);
+
+  useEffect(() => {
+    const fetchStoredDocId = async () => {
+      if (!docId) {
+        const storedDocId = await AsyncStorage.getItem("lastDocId");
+        if (storedDocId) {
+          router.replace({ pathname: "/user/chatbot", params: { docId : storedDocId} });
+        }
+      }
+    };
   
+    fetchStoredDocId();
+  }, [docId]);
+
 
   useEffect(() => {
     if (!docId || !userId) return;
@@ -66,6 +92,9 @@ export default function ChatbotScreen() {
               duration: 800,
               useNativeDriver: true,
             }).start();
+          }
+          if (data.name){
+            setCropName(data.name);
           }
         } else {
           console.error("Document not found!");
@@ -97,6 +126,11 @@ export default function ChatbotScreen() {
         ...doc.data(),
       }));
       setMessages(fetchedMessages);
+
+      // Auto-scroll if the user was already near the bottom
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollToEnd({ animated: true });
+      }
     });
 
     return () => unsubscribe();
@@ -177,6 +211,12 @@ export default function ChatbotScreen() {
         contentContainerStyle={styles.chatBoxContent}
         keyboardShouldPersistTaps="handled"
       >
+        {cropName && 
+            <Text style={{fontWeight:"bold", textAlign:'center', fontSize:24, marginBottom:10}}>
+              {cropName}
+            </Text>
+        }
+
         {imageUrl && (
           <Animated.View style={[styles.imageContainer, { opacity: fadeAnim }]}>
             <View style={styles.imageWrapper}>
@@ -188,7 +228,7 @@ export default function ChatbotScreen() {
           </Animated.View>
         )}
 
-{messages.map((msg, i) => (
+        {messages.map((msg, i) => (
           <View key={i} style={[styles.messageContainer, msg.role === "model" ? styles.aiMessage : styles.userMessage]}>
             <View
               style={[
