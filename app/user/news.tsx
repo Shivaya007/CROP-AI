@@ -4,13 +4,12 @@ import { useNews } from "../useNews"; // Import the custom hook
 import Constants from "expo-constants";
 import { Ionicons } from "@expo/vector-icons";
 import { Animated } from "react-native"; // Import for smooth animations
+import { ToastAndroid, Platform, Alert } from "react-native";
 
-
-const API_KEY = Constants.expoConfig?.extra?.news_api_key; // Replace with your News API key
 
 export default function NewsScreen() {
   const [articleCount, setArticleCount] = useState(10); // Initial count
-  const { news, loading, error, fetchMoreNews } = useNews(articleCount, API_KEY); // Custom hook with dynamic count
+  const { news, loading, error, fetchMoreNews } = useNews(articleCount); // Custom hook with dynamic count
 
   const [scrollY, setScrollY] = useState(new Animated.Value(0)); // Track scroll position
   const [showScrollUp, setShowScrollUp] = useState(false);
@@ -41,8 +40,15 @@ export default function NewsScreen() {
   }
 
   if (error) {
+    if (Platform.OS === "android") {
+      ToastAndroid.show("❌ Failed to load news!", ToastAndroid.SHORT);
+    } else {
+      Alert.alert("Error", "Failed to load news!");
+    }
+  
     return <Text style={styles.errorText}>{error}</Text>;
   }
+  
 
   return (
     <View style={styles.container}>
@@ -62,8 +68,8 @@ export default function NewsScreen() {
             </TouchableOpacity>
           </View>
         )}
-        onEndReached={loadMore} // Triggers when reaching bottom
-        onEndReachedThreshold={0.5} // Load more when 50% close to the bottom
+        onEndReached={loadMore} 
+        onEndReachedThreshold={0.5} 
         ListFooterComponent={() => loading && <ActivityIndicator size="small" color="#4CAF50" style={styles.loader} />}
       />
       {/* Floating Scroll-Up Button */}

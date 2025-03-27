@@ -35,7 +35,6 @@ import useUserId from "../userid";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
-
 const GEMINI_API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
 const { width } = Dimensions.get("window");
 
@@ -281,21 +280,20 @@ export default function ChatbotScreen() {
 
 
 const styles = StyleSheet.create({
-  // Existing styles...
   aiMarkdown: {
     body: { fontSize: 16, lineHeight: 24 },
-    text: { color: "#263238" }, // Default text color for AI
-    strong: { fontWeight: "bold" }, // **Bold**
-    em: { fontStyle: "italic" }, // *Italic*
+    text: { color: "#263238" }, 
+    strong: { fontWeight: "bold" }, 
+    em: { fontStyle: "italic" }, 
     link: { color: "#3949ab", textDecorationLine: "underline" },
   },
 
   userMarkdown: {
     body: { fontSize: 16, lineHeight: 24 },
-    text: { color: "#263238" }, // Default text color for User
-    strong: { fontWeight: "bold" }, // **Bold**
-    em: { fontStyle: "italic" }, // *Italic*
-    link: { color: "#ffeb3b", textDecorationLine: "underline" }, // Markdown links
+    text: { color: "#263238" },
+    strong: { fontWeight: "bold" },
+    em: { fontStyle: "italic" },
+    link: { color: "#ffeb3b", textDecorationLine: "underline" }, 
   },
   menuButton: {
     position: "absolute",
@@ -303,7 +301,7 @@ const styles = StyleSheet.create({
     top: Platform.OS === "ios" ? 50 : 25,
     padding: 0,
     marginBottom:10,
-    zIndex: 10, // Ensure it's above other elements
+    zIndex: 10, 
     marginTop:-10,
   },
   
@@ -316,10 +314,10 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 15,
     paddingHorizontal: 20,
-    backgroundColor: "#3949ab", // Ensures shadow visibility
+    backgroundColor: "#3949ab",
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
-    elevation: 5, // Android shadow
+    elevation: 5, 
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.4, 
@@ -351,9 +349,9 @@ const styles = StyleSheet.create({
   imageWrapper: {
     width: width * 0.9,
     borderRadius: 18,
-    backgroundColor: "#ffffff", // Ensure shadow is visible
+    backgroundColor: "#ffffff", 
     overflow: "hidden",
-    elevation: 6, // Android
+    elevation: 6, 
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
@@ -394,8 +392,8 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop:2,
     paddingBottom:2,
-    backgroundColor: "#ffffff", // Background ensures shadow effect
-    elevation: 3, // Android
+    backgroundColor: "#ffffff", 
+    elevation: 3, 
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
@@ -411,7 +409,7 @@ const styles = StyleSheet.create({
   userMessage: {
     alignSelf: "flex-end",
     borderRadius: 22,
-    maxWidth: "75%", // Ensures it doesn't stretch too wide
+    maxWidth: "75%",
     marginBottom: 10,
     elevation: 4,
     shadowColor: "gray",
@@ -483,7 +481,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 10,
-    elevation: 6, // Android
+    elevation: 6,
     shadowColor: "#3949ab",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.4,

@@ -23,6 +23,7 @@ import { db, storage } from "../firebase";
 import useUserId from "../userid";
 import { TextInput } from "react-native-gesture-handler";
 import { ToastAndroid, Platform, Alert } from "react-native";
+import { BackHandler } from "react-native";
 
 
 
@@ -41,7 +42,28 @@ export default function HomeScreen() {
   const [imageResult, setImageResult] = useState(null);
   const [pendingDocId, setPendingDocId] = useState<string | null>(null);
   const [retryUpload, setRetryUpload] = useState(false);
+  const [isHindi, setIsHindi] = useState(false);
 
+
+  useEffect(() => {
+    const backAction = () => {
+
+      if (modalVisible) {
+        setModalVisible(false);
+        return true;
+      }
+      if (titleModalVisible) {
+        setTitleModalVisible(false);
+        return true;
+      }
+      return false;
+    };
+  
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+  
+    return () => backHandler.remove(); // Cleanup on unmount
+  }, [modalVisible, titleModalVisible]);
+  
 
   useEffect(() => {
     if (openModal) {
@@ -58,13 +80,21 @@ export default function HomeScreen() {
   };
   
 
-
   const uploadToGemini = async (imageUri: string) => {
     setLoading(true);
     setRetryUpload(false);
     try {
       const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: "base64" });
 
+      const prompt = isHindi
+      ? "इस फसल का नाम, रोग, और संभावित उपचार दें, और बीमारियों को हल करने के लिए कार्यों की सूची बनाएं, दिन-ब-दिन योजना संक्षेप में दें, प्रत्येक बिंदु अधिकतम 20 शब्दों में।"
+      : "Analyze this crop, give its name, diseases, and possible treatments, and generate a list of to-do's to solve the diseases, Give a short day-by-day plan, Each point max 20 words.";
+  
+
+    //   const prompt = isHindi
+    // ? "इस फसल का नाम, रोग, और संभावित उपचार दें, और बीमारियों को हल करने के लिए कार्यों की सूची बनाएं, दिन-ब-दिन योजना संक्षेप में दें, प्रत्येक बिंदु अधिकतम 20 शब्दों में, and also in the end give the same each to-do in for of hash-map as day wise in array list, and '~$%~' at start and end of array, before [ and after ] (inverted comma not included in this symbol, and this is to add only before and end of array, and not anywhere), and give heading for this array to-do inside '~&^~'(inverted comma not included) before start and after end of the heading text, give this to-do and to-do heading in same hindi language only ।"
+    // : "Analyze this crop, give its name, diseases, and possible treatments, and generate a list of to-do's to solve the diseases, Give a short day-by-day plan, Each point max 20 words and also in the end give the same each to-do in for of hash-map as day wise in array list, and '~$%~' at start and end of array, before [ and after ] (inverted comma not included in this symbol, and this is to add only before and end of array, and not anywhere), and give heading for this array to-do inside '~&^~'(inverted comma not included) before start and after end of the heading text.";
+  
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
@@ -77,8 +107,9 @@ export default function HomeScreen() {
                     data: base64,
                   },
                 },
-                //{ text: "Analyze this crop and provide the name, diseases, and possible treatments, provide a short report of 50 words only in points." },
-                { text: "Analyze this crop give it's name, diseases, and possible treatments, and generate a list of to-do's in order to solve the diseases, give a day by day plan in short only, Each point in max 20 words, in respone give only list of to-do's no other text." },
+                // { text: "Analyze this crop and provide the name, diseases, and possible treatments, provide a short report of 50 words only in points." },
+                // { text: "Analyze this crop give it's name, diseases, and possible treatments, and generate a list of to-do's in order to solve the diseases, give a day by day plan in short only, Each point in max 20 words, in respone give only list of to-do's no other text, Give response in hindi language." },
+                { text: prompt },
               ],
             },
           ],
@@ -90,6 +121,7 @@ export default function HomeScreen() {
 
       const aiResponse = response.data;
       const docId = await uploadImageAndSaveData(imageUri, aiResponse);
+      console.log(aiResponse.candidates[0]?.content?.parts[0]?.text);
       
       setLoading(false);
       setCropTitle("");
@@ -129,12 +161,12 @@ export default function HomeScreen() {
       const aiReply = {
         role: "model",
         parts: [{ text: `**AI Analysis:**\n\n${aiResponse.candidates[0]?.content?.parts[0]?.text || "Analysis not available."}` }],
-        timestamp: new Date(), // Use Firestore timestamp for consistency
+        timestamp: new Date(), 
       };
       
       await addDoc(collection(db, "users", userId, "crop-diagnosis", docRef.id, "messages"), aiReply);
 
-      return docRef.id; // Return the document ID
+      return docRef.id; 
     } catch (error) {
       console.error("Error uploading to Firebase:", error);
       showError("Failed to save data. Check your connection and try again.");
@@ -175,7 +207,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (titleModalVisible && inputRef.current) {
-      setTimeout(() => inputRef.current.focus(), 100); // Small delay to ensure modal animation completes
+      setTimeout(() => inputRef.current.focus(), 100); 
     }
   }, [titleModalVisible]);
 
@@ -233,6 +265,9 @@ export default function HomeScreen() {
       <Modal visible={titleModalVisible} transparent animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setTitleModalVisible(false)}>
+              <Ionicons name="close" size={24} color="black" />
+            </TouchableOpacity>
             <Text style={styles.modalTitle}>Enter Crop Title</Text>
             <TextInput
               ref={inputRef}
@@ -241,6 +276,26 @@ export default function HomeScreen() {
               value={cropTitle}
               onChangeText={setCropTitle}
             />
+
+            {/* Language Toggle Button */}
+            <View style={styles.toggleContainer}>
+              <Text style={[styles.toggleText, !isHindi && styles.activeText]}>English</Text>
+              
+              <TouchableOpacity
+                style={[styles.toggleSlider, isHindi && styles.toggleSliderActive]}
+                onPress={() => setIsHindi((prev) => !prev)}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    isHindi ? styles.toggleThumbActive : styles.toggleThumbInactive,
+                  ]}
+                />
+              </TouchableOpacity>
+
+              <Text style={[styles.toggleText, isHindi && styles.activeText]}>हिंदी</Text>
+            </View>
+
             <TouchableOpacity style={styles.button} onPress={handleTitleSubmit}>
               <Text style={styles.buttonText}>Submit</Text>
             </TouchableOpacity>
@@ -254,45 +309,60 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-    input: {
-      width: "100%",
-      padding: 12,
-      borderWidth: 1,
-      borderColor: "#0D47A1",
-      borderRadius: 8,
-      backgroundColor: "#F1F5F9",
-      fontSize: 16,
-      marginBottom: 15,
-    },
-    container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F5F7FA", padding: 20 },
-    image: {
-      width: 220,
-      height: 220,
-      borderRadius: 12,
-      marginBottom: 20,
-      elevation: 6,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 5,
-    },
-    button: {
-      flexDirection: "row",
-      backgroundColor: "#0D47A1", // Changed to blue for a more professional look
-      paddingVertical: 14,
-      paddingHorizontal: 24,
-      borderRadius: 30,
-      alignItems: "center",
-      gap: 10,
-      elevation: 5,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-    },
-    buttonText: { fontSize: 18, fontWeight: "bold", color: "white" },
-    modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" },
-    modalContent: {
+  input: {
+    width: "100%",
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#0D47A1",
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  container: { 
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    backgroundColor: "#F5F7FA", 
+    padding: 20 
+  },
+  image: {
+    width: 220,
+    height: 220,
+    borderRadius: 12,
+    marginBottom: 20,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  button: {
+    flexDirection: "row",
+    backgroundColor: "#0D47A1", 
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    alignItems: "center",
+    gap: 10,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  buttonText: { 
+    fontSize: 18, 
+    fontWeight: "bold", 
+    color: "white" 
+  },
+  modalContainer: { 
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    backgroundColor: "rgba(0,0,0,0.5)" 
+  },
+  modalContent: {
     width: "85%",
     backgroundColor: "white",
     borderRadius: 15,
@@ -304,25 +374,99 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
   },
-    modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
-    optionButton: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 20, width: "100%", justifyContent: "flex-start", borderBottomWidth: 1, borderBottomColor: "#ddd" },
-    optionText: { fontSize: 18, marginLeft: 10 },
-    cancelButton: { marginTop: 10, paddingVertical: 10, width: "100%", alignItems: "center" },
-    cancelText: { fontSize: 18, fontWeight: "bold", color: "#FF3B30" },
-    retryButton: {
-      backgroundColor: "#FF3B30",
-      paddingVertical: 12,
-      paddingHorizontal: 20,
-      borderRadius: 30,
-      marginTop: 15,
-      alignItems: "center",
-      elevation: 3,
-    },
-    retryText: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: "white",
-    },
+  modalTitle: { 
+    fontSize: 20, 
+    fontWeight: "bold", 
+    marginBottom: 20 
+  },
+  optionButton: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    paddingVertical: 10, 
+    paddingHorizontal: 20, 
+    width: "100%", 
+    justifyContent: "flex-start", 
+    borderBottomWidth: 1, 
+    borderBottomColor: "#ddd" 
+  },
+  optionText: { 
+    fontSize: 18, 
+    marginLeft: 10 
+  },
+  cancelButton: { 
+    marginTop: 10, 
+    paddingVertical: 10, 
+    width: "100%", 
+    alignItems: "center" 
+  },
+  cancelText: { 
+    fontSize: 18, 
+    fontWeight: "bold", 
+    color: "#FF3B30" 
+  },
+  retryButton: {
+    backgroundColor: "#FF3B30",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    marginTop: 15,
+    alignItems: "center",
+    elevation: 3,
+  },
+  retryText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "white",
+  },
     
+  toggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    marginBottom:20,
+    gap: 10,
+  },
+  toggleSlider: {
+    width: 50,
+    height: 25,
+    borderRadius: 15,
+    backgroundColor: "#ddd",
+    padding: 2,
+    justifyContent: "center",
+    position: "relative",
+  },
+  toggleSliderActive: {
+    backgroundColor: "#0d47a1",
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "white",
+    position: "absolute",
+    top: 2.5,
+  },
+  toggleThumbInactive: {
+    left: 3,
+  },
+  toggleThumbActive: {
+    right: 3,
+  },
+  toggleText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#777",
+  },
+  activeText: {
+    fontWeight: "bold",
+    color: "black",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    padding: 8,
+  }
 });
 

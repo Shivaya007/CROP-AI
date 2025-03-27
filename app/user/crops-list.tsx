@@ -19,13 +19,13 @@ export default function CropListScreen() {
     setLoading(true);
   
     try {
-      console.log("Fetching crops..."); // Debugging
+      console.log("Fetching crops..."); 
       const cropsRef = collection(db, "users", userId, "crop-diagnosis");
       const cropsQuery = query(cropsRef, orderBy("timestamp", "desc"));
       const snapshot = await getDocs(cropsQuery);
   
       const cropList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log("Fetched crops:", cropList); // Debugging
+      console.log("Fetched crops:", cropList); 
   
       setCrops(cropList);
     } catch (error) {
