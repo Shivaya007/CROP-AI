@@ -231,7 +231,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 2 },
-
   },
   featureText: {
     fontSize: 16,
@@ -251,7 +250,13 @@ const styles = StyleSheet.create({
     width: width * 0.8,
     justifyContent: "center",
     elevation: 5,
+    shadowColor: "#0d47a1",
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    transform: [{ scale: 1 }],
   },
+  
   buttonText: {
     color: "white",
     fontSize: 18,

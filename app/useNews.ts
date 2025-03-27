@@ -29,7 +29,7 @@ export const useNews = (initialCount: number = 3) => {
         const url = `${BASE_URL}?q=${topic}&apiKey=${API_KEY}`;
         const response = await fetch(url);
         const data = await response.json();
-        console.log(data);
+        //console.log(data);
 
         if (data.status === "error" && data.code === "rateLimited") {
           setError("⚠️ An internal error occurred. Please try again later.");

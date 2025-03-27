@@ -86,14 +86,15 @@ export default function HomeScreen() {
     try {
       const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: "base64" });
 
-      const prompt = isHindi
-      ? "इस फसल का नाम, रोग, और संभावित उपचार दें, और बीमारियों को हल करने के लिए कार्यों की सूची बनाएं, दिन-ब-दिन योजना संक्षेप में दें, प्रत्येक बिंदु अधिकतम 20 शब्दों में।"
-      : "Analyze this crop, give its name, diseases, and possible treatments, and generate a list of to-do's to solve the diseases, Give a short day-by-day plan, Each point max 20 words.";
-  
+      // const prompt = isHindi
+      // ? "इस फसल का नाम, रोग, और संभावित उपचार दें, और बीमारियों को हल करने के लिए कार्यों की सूची बनाएं, दिन-ब-दिन योजना संक्षेप में दें, प्रत्येक बिंदु अधिकतम 20 शब्दों में।"
+      // : "Analyze this crop, give its name, diseases, and possible treatments, and generate a list of to-do's to solve the diseases, Give a short day-by-day plan, Each point max 20 words.";
+      
+      const todo_propmt = " and also in the end give the same each to-do in for of hash-map as day wise in array list, and '~$%~' at start and end of array, before [ and after ] (strictly not that this inverted comma is not included in this symbol for distinction, and this is to add only before and end of array, and not anywhere), and give heading for this array to-do inside '~&^~'(inverted comma not included) before start and after end of the heading text,"
 
-    //   const prompt = isHindi
-    // ? "इस फसल का नाम, रोग, और संभावित उपचार दें, और बीमारियों को हल करने के लिए कार्यों की सूची बनाएं, दिन-ब-दिन योजना संक्षेप में दें, प्रत्येक बिंदु अधिकतम 20 शब्दों में, and also in the end give the same each to-do in for of hash-map as day wise in array list, and '~$%~' at start and end of array, before [ and after ] (inverted comma not included in this symbol, and this is to add only before and end of array, and not anywhere), and give heading for this array to-do inside '~&^~'(inverted comma not included) before start and after end of the heading text, give this to-do and to-do heading in same hindi language only ।"
-    // : "Analyze this crop, give its name, diseases, and possible treatments, and generate a list of to-do's to solve the diseases, Give a short day-by-day plan, Each point max 20 words and also in the end give the same each to-do in for of hash-map as day wise in array list, and '~$%~' at start and end of array, before [ and after ] (inverted comma not included in this symbol, and this is to add only before and end of array, and not anywhere), and give heading for this array to-do inside '~&^~'(inverted comma not included) before start and after end of the heading text.";
+      const prompt = isHindi
+    ? `इस फसल का नाम, रोग, और संभावित उपचार दें, और बीमारियों को हल करने के लिए कार्यों की सूची बनाएं, दिन-ब-दिन योजना संक्षेप में दें, प्रत्येक बिंदु अधिकतम 20 शब्दों में, ${todo_propmt} ,give this to-do array in hindi only।`
+    : `Analyze this crop, give its name, diseases, and possible treatments, and generate a list of to-do's to solve the diseases, Give a short day-by-day plan, Each point max 20 words ${todo_propmt} .`;
   
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -121,7 +122,7 @@ export default function HomeScreen() {
 
       const aiResponse = response.data;
       const docId = await uploadImageAndSaveData(imageUri, aiResponse);
-      console.log(aiResponse.candidates[0]?.content?.parts[0]?.text);
+      // console.log(aiResponse.candidates[0]?.content?.parts[0]?.text);
       
       setLoading(false);
       setCropTitle("");
@@ -146,7 +147,41 @@ export default function HomeScreen() {
       const response = await fetch(imageUri);
       const blob = await response.blob();
       const imageRef = ref(storage, `images/${Date.now()}.jpg`);
-      
+
+      // Extract AI response text
+      let aiText = aiResponse.candidates[0]?.content?.parts[0]?.text || "Analysis not available.";
+
+      // Extract to-do section using markers
+      let todosArray: { day: string; text: string; done: boolean }[] = [];
+
+      const todoMatch = aiText.match(/~\$%~\s*\[\s*(.*?)\s*\]\s*~\$%~/s); // Extract content inside [$%~ ~%$]
+      const headingMatch = aiText.match(/~&^~(.*?)~&^~/s); // Extract heading text
+
+      if (todoMatch && todoMatch[1]) {
+        try {
+          const todos = JSON.parse(`[${todoMatch[1]}]`); // Ensure valid JSON format
+          
+          todosArray = todos.map((item: any, index: number) => {
+            const dayKey = Object.keys(item)[0]; // Extracts "Day 1", "Day 2", etc.
+            return {
+              index: index + 1,
+              day: dayKey, // Stores only day number
+              text: item[dayKey], // Task description
+              done: false, // Default: not completed
+            };
+          });
+        } catch (err) {
+          console.error("Error parsing to-do list:", err);
+        }
+      }
+
+      // Remove to-do array & heading from the AI response text before saving
+      aiText = aiText
+      .replace(/~&\^~.*?~&\^~/s, "") // Remove the heading part
+      .replace(/~\$%~.*?~\$%~/s, "") // Remove the to-do list array
+      .trim();
+
+
       await uploadBytes(imageRef, blob);
       const downloadURL = await getDownloadURL(imageRef);
 
@@ -157,13 +192,27 @@ export default function HomeScreen() {
         name : cropTitle,
       });
 
+       // Save extracted to-dos in a separate collection
+      if (todosArray.length > 0) {
+        for (const todo of todosArray) {
+          await addDoc(collection(db, "users", userId, "crop-diagnosis", docRef.id, "todos"), todo);
+        }
+      }
 
+
+      // const aiReply = {
+      //   role: "model",
+      //   parts: [{ text: `**AI Analysis:**\n\n${aiResponse.candidates[0]?.content?.parts[0]?.text || "Analysis not available."}` }],
+      //   timestamp: new Date(), 
+      // };
+
+      // Save AI analysis message
       const aiReply = {
         role: "model",
-        parts: [{ text: `**AI Analysis:**\n\n${aiResponse.candidates[0]?.content?.parts[0]?.text || "Analysis not available."}` }],
-        timestamp: new Date(), 
+        parts: [{ text: `**AI Analysis:**\n\n${aiText}` }], // Cleaned response
+        timestamp: new Date(),
       };
-      
+
       await addDoc(collection(db, "users", userId, "crop-diagnosis", docRef.id, "messages"), aiReply);
 
       return docRef.id; 

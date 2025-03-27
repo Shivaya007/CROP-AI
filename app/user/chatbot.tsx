@@ -67,6 +67,9 @@ export default function ChatbotScreen() {
         if (storedDocId) {
           router.replace({ pathname: "/user/chatbot", params: { docId : storedDocId} });
         }
+        else {
+          router.replace('/user/crops-list');
+        }
       }
     };
   
