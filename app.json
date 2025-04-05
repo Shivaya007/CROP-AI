@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "extra": {
-      "GEMINI_API_KEY": "AIzaSyDOS_NvkSys31-7LWyaeOFncwDvjx7NbOk",
+      //"GEMINI_API_KEY": "AIzaSyDOS_NvkSys31-7LWyaeOFncwDvjx7NbOk",
       "web_client_id": "129087000878-9o49a9d8t21ml0fd3qrbvc79a1j8185i.apps.googleusercontent.com",
       "android_client_id": "129087000878-7cvqdfj91hoc593cqo2pdq2e6hamrjcg.apps.googleusercontent.com",
       "ios_client_id": "129087000878-7cvqdfj91hoc593cqo2pdq2e6hamrjcg.apps.googleusercontent.com",
